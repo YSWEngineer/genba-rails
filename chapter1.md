@@ -380,7 +380,7 @@ irb(main):023:0> object.method_2
 - ローカル変数とインスタンス変数の違いの理解は、Railsアプリケーションを作成する上でも非常に重要になります。ローカル変数は 1 つのメソッドの中で一時的に使うデータを参照するために使います。一方、インスタンス変数は、特定のオブジェクトの内部で使い回したり、そのオブジェクトに属するデータとして外部からゲッターを通じて利用させるために用います。ここでは、**インスタンス変数はオブジェクトに抱えられたデータである**というイメージを覚えておいてください。
 
 
-### 属性
+### 1 - 2 - 6 属性
 - 一般的にオブジェクトの抱えるデータのことを「属性(Attribute)」と呼ぶことがあります。先程の例で言えば、name は user の属性ということになります。インスタンス変数も、オブジェクトの抱えるデータのことですから、属性とインスタンス変数はとてもよく似た概念と言えます。ただし、必ずしも同じではありません。インスタンス変数という用語が Ruby の言語の機能を指しているのに対して、属性という用語はもう少し抽象的に、結果としてオブジェクトに対して読んだり書いたりできる(時には片方しかできない)データを表す概念です。
     
     たとえば、外部から見たときには属性として使わないような、オブジェクト内の”秘密の”インスタンス変数が存在する場合もあります。また、外部の記憶装置などを直接使ったり、固定値や、計算値を用いることで、インスタンス変数を使わないで属性を実現することもできます。
@@ -388,7 +388,7 @@ irb(main):023:0> object.method_2
     Railsアプリケーションにおいては、特にモデル層でこの「属性」という用語が登場します。Railsモデルの「属性」にはデータベースのカラムとの対応関係などの要素が加わるため、より複雑になりますが、根本的な意味としてはオブジェクトが抱えるデータであることに変わりはありません。「属性」という用語にぜひ慣れておきましょう。
 
 
-### ゲッターやセッターを簡単に定義する
+### 1 - 2 - 7 ゲッターやセッターを簡単に定義する
 - 先程は、Userクラスに属性の name のゲッターとセッターを次のように定義していました。
 
 ```ruby
@@ -417,7 +417,7 @@ end
     なお、attr_readerを使うとゲッターだけ、attr_writerを使うとセッターだけを定義することができます。
 
 
-### メソッドからメソッドを使う
+### 1 - 2 - 9 メソッドからメソッドを使う
 
 - オブジェクトのメソッドの中から、同じオブジェクトの他のメソッドを呼び出すことができます。例として、名前と住んでいる場所を合わせて返すようなprofileメソッドを作ってみましょう。
 
@@ -459,7 +459,7 @@ irb(main):035:0> '#{name}'
 - Ruby に慣れていないうちは、メソッド内での name や address が、メソッドの呼び出しなのか、ローカル変数なのか、どちらなのかわからなくて混乱するかもしれません。見分け方としては、**コード内に出てきた名前がローカル変数として定義されていたり、メソッドの引数になっていればローカル変数、そうでなければメソッド名だと判断**できます。
 - 1 つ 1 つのメソッドを長大にせず、引数や変数名を妥当につけていけば、実際にコードを読み書きしていて困ることはあまりないと思います。また、**IDE** では変数やメソッドの文字を自動で色分けしてくれるため、簡単に把握することもできます。
 
-### まとめ - オブジェクトの振る舞いとデータ
+### 1 - 2 - 10 まとめ - オブジェクトの振る舞いとデータ
 
 - これまで、Rubyプログラムを構成する最も基本的な単位が「オブジェクト」であり、「オブジェクト」は「クラス」から作られること、「メソッド」や「インスタンス変数」を抱えることを学んできました。
 - 大雑把に言えば、Ruby ではオブジェクトのデータが「インスタンス変数」、振る舞いが「(インスタンス)メソッド」に当たります。そして、どういう種類のインスタンス変数を持つか、それぞれのメソッドの処理が具体的にどのようであるかということを「クラス」に定義しておいて、その定義を使って、同じ性質を持つ「(インスタンス)オブジェクト」を好きなだけ量産して利用していくということになります。
@@ -767,3 +767,765 @@ end
 	
 	
 <details><summary>Chapter 1 - 4 少し高度なテクニック</summary>
+
+### 1 - 4 - 1 initialize
+
+- Ruby のオブジェクトをnewメソッドで生成する時は、そのオブジェクトの initialize というメソッドが実行されます。
+    
+    次の例では、以前作ったUserクラスを、名前・住所・Eメールはオブジェクト生成時に設定して、それ以降は変更しないという設計に変えています。オブジェクト設定時にインスタンス変数を設定するために initialize を利用しています。
+    
+
+```ruby
+class User
+  attr_reader :name, :address, :email
+  def initialize(name, address, email)
+    @name = name
+    @address = address
+    @email = email
+  end
+end
+```
+
+- initialize に引数をとるクラスのオブジェクトを作成する時は、new に対応する引数を渡します。
+
+```ruby
+user = User.new("大場寧子", "東京都", nil)	
+```
+
+### 1 - 4 - 2 メソッドの呼び出しに制限をかける
+
+- ある人物が億万長者かどうかを判定する、こちらのコードを見てみましょう。
+
+```ruby
+class Person
+  def initialize(money)
+    @maney = money
+  end
+
+  # 億万長者かどうかを返す
+  def billionaire?
+    money >= 1000000000
+  end
+
+  def money
+    @money
+  end
+end
+```
+
+- このPersonクラスは所持金というデータを持ち、10 億以上所持している場合に億万長者と認定します。一度このクラスのオブジェクトを得たら、私たちは、億万長者かどうかを知るだけでなく所持金までも知ることができます。
+
+```ruby
+irb(main):048:0> person = Person.new(1000000000)
+=> #<Person:0x00000001079ef608 @money=1000000000>
+irb(main):049:0> person.billionaire?
+=> true
+```
+
+- このように、億万長者かわかります。しかし所持金までわかってしまいます。
+
+```ruby
+irb(main):050:0> person.money
+=> 1000000000
+```
+
+- このPersonクラスが、億万長者かだけをみんなに知らせたいものの、所持金は外部に対して隠しておきたい場合はどうでしょう。このようなことを実現するためには、Ruby では「private」というキーワードを使います。private と書かれた行より後に定義されたメソッドは、privateメソッドになります。
+
+```ruby
+class Person
+  def initialize(money)
+    @money = money
+  end
+
+  # 億万長者かどうかを返す
+  def billionaire?
+    money >= 1000000000
+  end
+
+  private
+
+  def money
+    @money
+  end
+end
+```
+
+- これで、moneyメソッドはprivateメソッドになりました。privateメソッドは、オブジェクトの内部からは利用できますが、外側から利用できません。
+- personオブジェクトに問い合わせをしてみましょう。person.billionaire? は問題なく利用できますが、person.money を実行すると、次のようなエラーが発生するようになります。
+
+```ruby
+irb(main):054:0> person = Person.new(1000000000)
+=> #<Person:0x000000010816f158 @money=1000000000>
+irb(main):055:0> person.money
+(irb):55:in `<main>': private method `money' called for #<Person:0x000000010816f158 @money=1000000000> (NoMethodError)
+```
+
+- このように、オブジェクトの外部に対して提供する意思のあるメソッドと、そうでないメソッドを区別して記述することができます。
+- 先程出てきたinitializeメソッドは private と書かなくても、自動的にprivateメソッドになります。このため外部から利用できません。
+
+```ruby
+irb(main):056:0> person = Person.new(100)
+=> #<Person:0x00000001081c69f8 @money=100>
+irb(main):057:0> person.initialize
+(irb):57:in `<main>': private method `initialize' called for #<Person:0x00000001081c69f8 @money=100> (NoMethodError)
+```
+
+- 尚、**外部から利用できる状態のメソッドのことを**、privateメソッドに対して**publicメソッドと呼ぶ**ことがあります。
+
+### 1 - 4 - 3 引数にデフォルト値を指定する ※本書では省略している箇所アリ
+
+- メソッドの引数にデフォルト値を指定することもできます。デフォルト値のある引数は、メソッドを呼ぶ際に渡さなくてもよくなります。引数が渡されていない場合はデフォルト値が引数の値として代入されます。例として、次のようなnameメソッドを見ていきましょう。
+
+```ruby
+def name(full, with_age)
+  n = if full
+        "#{family-name} #{given_name}"
+      else
+        given_name
+      end
+  n << "(#{age})" if with_age
+  n
+end
+```
+
+- nameメソッドには full と with_age という 2 つの引数があります。full には、名前をフルネームで得たいかどうかを指定します。with_age には、名前に括弧書きで年齢を添えたいかどうかを指定します。例えば、どちらも true に指定すれば、次のような表記を得ることができます。フルネームで、年齢も添えられています。
+
+```ruby
+> person.name(true, true)
+=> "浦島太郎(100)"
+```
+
+- もしも、このメソッドの利用場面において、上記のような表記を得たいことが圧倒的に多いとしたらどうでしょう。毎回、true, true を付けて呼ぶのは冗長で、面倒です。このような場合は何も引数を渡さなければ true , true を渡したのと同じになる」ようにできれば便利でしょう。これは、メソッドを定義する箇所で次のように引数にデフォルト値を指定すれば実現できます。
+
+```ruby
+def name(full = true, with_age = true)
+...
+end
+```
+
+```ruby
+> person.name
+=> "浦島太郎(100)"
+```
+
+- 引数を 1 つだけ指定したい場合はどうすればよいのでしょうか。実は、Ruby では、メソッドが複数の引数を持つ場合、デフォルト値はうしろのほうの引数から連続で定義しなければならないという決まりがあります。デフォルト値の指定された範囲では、渡された引数は順番に代入され、足りない分の引数に対してデフォルト値が代入されます。
+- 具体例を見ていきましょう。1 つめの引数の full だけを渡したい場合は、次のように記述します。2 つめの引数 with_age にはデフォルト値が代入されます。
+
+```ruby
+> person.name(false)
+```
+
+- 2 つめの引数 with_age だけを渡したい場合、通り道にある 1 つめの引数 full を省略することができません。デフォルト値と同じであっても、次のように渡す必要があります。
+
+```ruby
+> person.name(true, false)
+```
+
+- かなり不便です。このような問題を軽減するためには、省略されることの多い引数ほど順番が後ろになるように定義するとよいでしょう。
+- 引数を省略しないでこのnameメソッドを呼び出す場合、そのコードは次のようになっています。
+
+```ruby
+> person.name(true, true)
+> person.name(false, false)
+> person.name(true, false)
+> person.name(false, true)
+```
+
+- これを見て、どんな表記を得たいという意味かを即座に思い浮かべることができるでしょうか。このような問題を解決できる仕組みが、次節で説明するキーワード引数です。キーワード引数を用いると、先程取り上げた、引数の順番によって引数を省略できない場合があるという不便さも解決することができます。
+
+### 1 - 4 - 4 キーワード引数 ※本書では省略している箇所アリ
+
+- メソッドを呼び出す際に、引数の意味がわからないと不便な場合があります。先程のnameメソッドの呼び出し部分は次のようになっていました。
+
+```ruby
+name(true, false)
+```
+
+- これを次のように記述することができたら、nameメソッドを使うことでどういう表記を得たいのかという意図を把握しやすくなるでしょう。
+
+```ruby
+name(full: true, with_age: false)
+```
+
+- 上記のコードならば、フルネームが欲しいものの年齢はいらない、ということが読み取れます。このように、引数を意味付けとともに渡すことができるのがキーワード引数という仕組みです。先程のnameメソッドをキーワード引数を使って定義すると次のようになります。
+
+```ruby
+def name(full: true, with_age: true)
+	n = if full
+				"#{family_name} #{given_name}"
+			else
+				given_name
+	n << "(#{age})" if with_age
+	n
+end
+```
+
+```ruby
+> person.name(full: true, with_age: false)
+=> "浦島太郎"
+```
+
+```ruby
+> person.name(with_age: false, full: true)
+=> "浦島太郎"
+```
+
+- nameメソッドでは、それぞれの引数のデフォルト値を true に設定しているので、false にしたいフラグだけを次のように書くこともできます。
+
+```ruby
+> person.name(with_age: false)
+=> "浦島太郎"
+
+> person.name(full: false)
+=> "太郎(100)"
+```
+
+- どちらも true でよければ、全ての引数を省略することができます。
+
+```ruby
+> person.name
+=> "浦島太郎(100)"
+```
+
+- キーワード引数には必ずデフォルト値を付けなければならないわけではありません。nameメソッドの定義部分を次のように変えれば、with_age にデフォルト値を付けず、必ず指定させるようにすることができます。
+
+```ruby
+def name(full: true, with_age:)
+```
+
+- キーワード引数は、メソッドを呼び出すコードをわかりやすく記述でき、引数の順番を気にせずに必要な部分だけを記述できるため、Rails でもよく利用されています。自分でメソッドを定義する際にも、ぜひ積極的に取り入れてみてください。</details>
+
+
+	
+<details><summary>Chapter 1 - 5 似たところのあるクラスを作りたいとき</summary>
+
+	
+プログラムを書いていると、似たところのある別のクラスを何個も書かなくてはならない場合があります。
+
+例えば、オンラインショッピングのシステムで、商品を表すProductクラスと、注文内の 1 商品の情報を表すOrderedItemクラスがあるとします。どちらも、税抜きの価格を持っており、税込価格を計算する total_price というメソッドを備えています。
+
+```ruby
+class Product
+  attr_accessor :price
+
+  def total_price
+    price * Tax.rate
+  end
+end
+
+class OrderedItem
+  attr_accessor :unit_price, :volume
+
+  # 税抜き単価 * 数量
+  def price
+    unit_price * volume
+  end
+
+  def total_price
+    price * Tax.rate
+  end
+end
+```
+
+上記コードのtotal_priceメソッドのように、同じコードをいろいろな箇所に書くことは、それ自体が面倒で手間がかかることです。また、重複している箇所に共通の変更ニーズが発生すると(例えば上記のコードの例ではTaxクラスの使い方が変わったとき)、全ての箇所を加なくてはいけなくて、更に面倒です。
+
+Ruby には、このように似たところにあるクラス同士の似ている点を抽出して共通利用するための代表的な仕組みとして「継承」と「モジュールによる共通化(Mix-in)」の 2 つの方法があります。
+
+尚、これらについては、第 10 章で、Railsアプリケーションの各部品の共通化の方法を紹介するところでも触れています。
+
+### 1 - 5 - 1 継承
+
+- 既存のクラスが持っている機能を基本的に全部引き継いだ上で、一部を変えたい、というニーズに適しているのが「**継承**」という仕組みです。
+- 継承は、抽象的なクラス(原型)を起点にして、それを引き継いで具体的なクラス（原型）を作っていくというのが基本的なイメージです。例えば、「猫」、「人間」、「薔薇」、「ロボット」をそれぞれクラスに見立てれば、次のような継承関係を考えることができるでしょう。※図はテキストを参照。
+- 図は、矢印の先のクラスを、矢印の根本のクラスが継承していることを表します。人間は動物の一種なので動物クラスを継承し、動物クラスは生物の一種なので生物クラスを継承し、生物クラスは個体の一種なので個体を継承する、といった具合です。
+- Product と OrderedItem のクラスの消費税計算をまとめるために継承を利用する場合は、共通機能（消費税計算）を抱える一段抽象的なクラス（ここでは、価格のあるものということで PricedObject というクラスを作ることにします）を作り、Product と OrderedItem がそれぞれのその抽象的なクラスを継承するようにします。
+- **継承を行うには、クラスを定義する時にクラスの名前の後に「<」を付けて、機能を継承するクラスを指定します。**
+
+```ruby
+# 「価格のあるもの」を抽象化したクラス
+class PricedObject
+  def total_price
+    price * Tax.rate
+  end
+
+  def price
+    # 「raise NotImplementedError」は機能が実装されていないことを表すエラーを発生させるコードです
+    raise NotImplementedError
+  end
+end
+
+class Product < PricedObject
+  attr_accessor :price
+end
+
+class OrderedItem < PricedObject
+  attr_accessor :unit_price, :volume
+
+  # 税抜き単価 * 数量
+  def price
+    unit_price * volume
+  end
+end
+```
+
+- この例の PricedObject のように、機能を継承する元となるクラスのことを、Product や OrderedItem にとっての「**親クラス**」あるいは「**スーパークラス**」と呼びます。逆に親クラスから見た時に、自分を継承しているクラスのことを「**子クラス**」あるいは「**サブクラス**」と呼びます。
+- **Railsアプリケーションを作る時は、Rails があらかじめ用意したクラスを継承して、アプリケーションの用途に合わせた新しいクラスを作り、開発していきます**。そのため、**Railsアプリケーションのコードでは、継承を目にすることがとても多い**でしょう。
+
+```ruby
+# Rails の「モデル」という仕組みでよく見かけるコード
+# ApplicationRecord という Rails が用意したクラスを継承している
+class Post < ApplicationRecord
+	# ...
+end
+```
+
+- **子クラスと親クラスが同じ名前のメソッドを持っている場合は、そのメソッドを呼び出した時に、次のように子クラス側のメソッドが呼び出されます。**
+
+```ruby
+# 子クラスと親クラスが同じメソッドを持っている場合、そのメソッドを呼び出した時は、小クラスのメソッドが呼び出される。
+class Book
+  def title
+    '本のタイトル'
+  end
+end
+
+class Magazine < Book # 子クラス（サブクラス） < 親クラス（スーパークラス）
+  def title
+    '雑誌のタイトル'
+  end
+end
+
+irb(main):064:0> magazine = Magazine.new
+=> #<Magazine:0x000000010812cf10>
+irb(main):065:0> puts magazine.title
+雑誌のタイトル
+```
+
+- 親クラスが持つメソッドの処理を、子クラスに書かれた処理で上書きすることを「**オーバーライド**」と呼ばれます。もし、子クラスのメソッドの中で親のクラスの同名のメソッドを呼びたい場合は「**super**」というキーワードを使うことで、呼び出すことができます。
+
+```ruby
+class BaseTask
+  def puts_message
+    puts 'BaseTask のタイトル'
+  end
+end
+
+class Task < BaseTask
+  def puts_message
+    super # 「super」で小クラスのメソッドの中で親クラスの同名のメソッドを呼び出せる。
+    puts 'Task のタイトル'
+  end
+end
+
+irb(main):067:0> task = Task.new
+=> #<Task:0x0000000108366588>
+irb(main):068:0> puts task.puts_message
+BaseTask のタイトル
+Task のタイトル                                              
+                                                             
+=> nil
+```
+
+### 1 - 5 - 2 モジュールによる共通化（Mix - in）
+
+### 1 - 5 - 2 - 1 モジュール
+
+- **Ruby 基本単位はオブジェクトであり、オブジェクトの設計図としてクラスがあり**ます。このほか、Ruby には、ある一連の振る舞いの設計図を一箇所にまとめた存在として「**モジュール（Module）**」という概念があります。
+- モジュールは、moduleキーワードを使って定義します。クラスと同じようにインスタンスメソッドを定義することができます。
+
+```ruby
+# おしゃべり能力
+module Chatting
+  def Chat
+    "hello"
+  end
+end
+```
+
+- ただ、モジュールはクラスとは異なり、オブジェクトを生成することができません。試しに、クラスのように new を使ってオブジェクトを生成してみましょう。
+
+```ruby
+irb(main):070:0> object = Chatting.new
+(irb):70:in `<main>': undefined method `new' for Chatting:Module (NoMethodError) # 「newメソッドは定義されていません」と表示。
+        from /Users/yoshiwo/.rbenv/versions/3.1.0/lib/ruby/gems/3.1.0/gems/irb-1.4.2/exe/irb:11:in `<top (required)>'
+        from /Users/yoshiwo/.rbenv/versions/3.1.0/bin/irb:25:in `load'
+        from /Users/yoshiwo/.rbenv/versions/3.1.0/bin/irb:25:in `<main>'
+```
+
+- **モジュールのオブジェクトを生成することはできません**。
+- **モジュールは一連の振る舞い（メソッド群）を表しており、それをまとめてクラスに取り込んでもらう**ことができます。
+- クラスにモジュールを取り込んでみましょう。クラスにモジュールを取り込むには「**include**」メソッドを使います。
+
+```ruby
+class Dog
+# includeメソッドでクラスにモジュールを取り込む。
+  include Chatting
+  def chat
+    "hello"
+  end
+end
+
+irb(main):075:0> pochi = Dog.new
+=> #<Dog:0x000000010833f668>
+irb(main):076:0> pochi.chat
+=> "hello"
+```
+
+- 同じモジュールをいろいろなクラスに取り込むことで、同じ振る舞いのセットをいろいろなクラスに簡単に追加することができます。
+
+```ruby
+class Cat
+	include Chatting
+end
+
+class Human
+	include Chatting
+end
+```
+
+- モジュールは「部分的な設計書」です。クラスという「設計書」に、共通の「部分的な設計書」を取り込むことで、複数の似たクラスを簡単に実現できます。
+- また、1 つのクラスに対して複数のモジュールを取り込ませることもできます。
+
+```ruby
+# おしゃべり能力
+module Chatting
+  def chat
+    "hello"
+  end
+end
+
+# 泣く能力
+module Weeping
+  def weep
+    "しくしく"
+  end
+end
+
+class Human
+  include Chatting
+  include Weeping
+end
+
+irb(main):078:0> taro = Human.new
+=> #<Human:0x000000010831d298>
+irb(main):079:0> taro.chat
+=> "hello"
+irb(main):080:0> taro.weep
+=> "しくしく"
+```
+
+- モジュールをクラスに取り込んで振る舞いを追加することを Ruby では「**Mix - in**」（**ミックスイン**）と呼ぶことがあります。
+- モジュールをうまく使うと、複数のクラスで共通している処理を 1 箇所にまとめることができます。
+- 最初に挙げた消費税計算の例を Mix - in で共通化するコード例を挙げておきましょう。消費税計算機能を持つモジュールPriceHolderを作り、Product と OrderedItem でそれぞれ include します。
+
+```ruby
+# 価格についての共通機能をまとめたモジュール
+module PriceHolder
+  def total_price
+    price = Tax.rate
+  end
+end
+
+class Product
+  include PriceHolder
+
+  attr_accessor :price
+end
+
+class OrderedItem
+  include PriceHolder
+
+  attr_accessor :unit_price, :volume
+
+  # 税抜き単価 * 数量
+  def price
+    unit_price * volume
+  end
+end
+```
+
+### Column クラスメソッド
+
+本章では、混乱を避けるため、基本的にメソッドについてはインスタンスメソッドを軸として解説してきました。
+
+しかし、ほかのプログラミグ言語の経験があれば「クラスメソッド」は無いのかと疑問に思われた方もいることでしょう。Ruby には、クラスに対して呼び出せるクラスメソッドという概念が存在します。実際に、本章で登場した消費税計算のコードで利用されている「Tax.rate」という記述は、実はクラスメソッドになっています。
+
+クラスメソッドを記述する方法は複数通りありますが、一番よく知られている形としては、次のように、メソッド名の前に `self.` を付けて定義します。
+
+```ruby
+class Tax
+  def self.rate
+    1.08
+  end
+end
+```
+
+Railsアプリケーションを書いていると、クラスのインスタンスメソッドの中ではなく、外側に、Rails 独自のキーワードのようなものを書く場面が多くあります。例えば、モデルクラスでは、 1 対多で関係するモデルを has_many というキーワードで次のように定義します。
+
+```ruby
+class Book < ApplicationRecord
+  has_many :authors
+end
+```
+
+ここで登場する has_many は実はクラスメソッドの一種になっています。Ruby に慣れるまでは、クラスメソッドを書く機会は多くはないですが、このように、フレームワーク独特の構文のように見えるものの多くがクラスメソッドとして実現されているということを知っておくと、Rails と Ruby を区別して効果的にコードを読んだり、デバッグをすることに役立つはずです。</details>
+	
+	
+<details><summary>Chapter 1 - 6 プログラムの異常を検知しよう（例外捕捉）</summary>
+
+- 一般的に、プログラムを完璧に作るのは難しく、開発者の意図に反した動作をしてしまう場合もあります。こうした場合は、プログラムが適切に動かず、最終的に「例外」が発生するという状況になることもよくあります。例えば、0 除算を行おうとしたり、存在しないメソッドを呼び出そうとしたり、存在しないファイルを開こうとすると例外が発生します。試しに、irb で 0 除算を行ってみましょう。
+
+```ruby
+irb(main):001:0> 10 / 0
+(irb):1:in `/': divided by 0 (ZeroDivisionError)
+```
+
+- ZeroDivisionError という例外が発生したことがわかります。ちなみに、例外もオブジェクトになっており、ここで発生している例外は ZeroDivisionError という例外クラスのオブジェクトになっています。
+- 自分で例外を発生させるには raise というメソッドを利用します。例えば、先程の ZeroDivisionError を次のようにして自分で発生させることもできます。
+
+```ruby
+irb(main):004:0> raise ZeroDivisionError, "hello, error!"
+(irb):4:in `<main>': hello, error! (ZeroDivisionError)
+```
+
+- rais に文字列だけを渡すと、RuntimeError という一般的な例外を手軽に発生させることができます。
+
+```ruby
+irb(main):005:0> raise '例外が発生しました'
+(irb):5:in `<main>': 例外が発生しました (RuntimeError)
+```
+
+- Ruby にはいろいろな例外クラスがあります。また、次のように自分で作ることもできます。
+
+```ruby
+irb(main):006:0> class NoMoneyError < StandardError; end
+=> nil
+irb(main):007:0> raise NoMoneyError, "no money"
+(irb):7:in `<main>': no money (NoMoneyError)
+```
+
+- 自分で作る場合には、例外クラスの階層構造を意識し、特別な理由がなければアプリケーションレベルの例外に対応する StandardError を継承するようにするとよいでしょう。
+- 通常、例外が発生するとRubyプログラムは終了します。Railsアプリケーションの場合はフレームワークで例外が捕捉され、最終的にブラウザにエラー画面が表示されることになります。しかし、例外が発生したときの処理を自分で記述することもできます。
+- 例外を捕捉するには、例外が発生するかもしれないコードを begin の中に記述し、その中で発生した例外への対応の仕方をrescue節の中で記述します。さらに、例外が出た場合も出なかった場合も必ず行いたい後処理をensure節に書くことができます。ensure節はなくても構いません。
+
+```ruby
+begin
+  (例外が発生するかもしれないコード)
+rescue
+  (例外に対応するコード)
+ensure
+  (例外が発生してもしなくても必ず実行したいコード)
+end
+```
+
+- また、メソッドないの処理全体に対して例外処理を行いたい場合は、次のように begin を使わずに記述できます。
+
+```ruby
+def メソッド名
+  (メソッドのコード)
+rescue
+  (例外に対応するコード)
+ensure
+  (例外が発生してもしなくても必ず実行したいコード)
+end
+```
+
+- 次に示すコードは、begin の中で do_something というメソッドを実行し、もし実行中に自作の SomeSpecialError（および、その子クラス）が発生したら捕捉して、例外オブジェクトを e という変数に受け取り、例外の内容を出力してそのままプログラムを実行します。
+
+```ruby
+begin
+  do_something
+rescue SomeSpecialError => e
+  puts "#{e.class} (#{e.message})が発生しました。処理を続行します。"
+end
+```
+
+- 上記では、rescue節で捕捉するクラスを指定していますが、次のようにクラスを省略することもできます。
+
+```ruby
+rescue => e
+```
+
+- 省略すると、StandardError およびその子クラスの例外を捕捉します。先程解説した ZeroDivisionError や RuntimeError も StandardError を継承しており、この方法で補足することができます。また、例外オブジェクトを変数として受け取る必要がなければ、その部分の記述を次のように省略して書くことができます。
+
+```ruby
+rescue SomeSpecialError
+```
+
+```ruby
+rescue
+```
+
+</details>
+
+	
+<details><summary>Chapter 1 - 7 読めると便利！ Rubyっぽい書き方</summary>
+
+ここからは、Ruby のコードを読み書きする上で知っていると便利なことを少し補足していきます。
+
+### 1 - 7 - 1 nilガード
+
+- Ruby に慣れていない方には風変わりな書き方に見えるものの、覚えて仕舞えばとても便利な書き方のひとつに「nilガード」というものがあります。
+
+```ruby
+number || = 10 # 変数numberが nil または false なら、10 を number に代入。
+```
+
+- これは次のコードと同じ動きをします。
+
+```ruby
+number || (number = 10)
+```
+
+- 上記コードは「もしも number があれば number 、なければ number に 10 を代入した上での number」というような意味になります。ここで「number があれば」と書いたのは、number が真である（nil や false でない）という意味であり、「なければ」というのは偽である（nil か false である）という意味です。nilガードは、変数に nil が入っているかもしれない状況で、nil の代わりに何らかのデフォルト値を入れておきたいという場面で、とても便利に利用できます。
+- 次に示すのはよくある利用法で、配列のインスタンス変数 @children へのゲッターメソッドを実装しています。
+
+```ruby
+def children
+	@children || = []
+end
+```
+
+- 上記ではnilガードを用いているため、内部的に @children が nil の状態であったとしても、このメソッドが呼び出された時に空の配列 [ ] が代入されてから返されます。そのため、childrenメソッドは絶対に nil を返すことがありません。おかげで利用する側は安心してこのメソッドのあるオブジェクトに対して、オブジェクト.children.size などと、children が配列を返す前提のコードを書くことができます。
+
+### 1 - 7 - 2 ぼっち演算子 &.
+
+&. という演算子を使ってメソッドを呼び出すと、レシーバが nil であった場合でもエラーが発生しなくなります。
+
+```ruby
+class User
+  def name
+    '名前'
+  end
+end
+```
+
+```ruby
+irb(main):009:0> user = User.new
+=> #<User:0x000000010d74e358>
+irb(main):010:0> user.name
+=> "名前"
+irb(main):011:0> object = nil
+=> nil
+irb(main):012:0> object&.name
+=> nil
+irb(main):013:0> object.name
+(irb):13:in `<main>': undefined method `name' for nil:NilClass (NoMethodError)
+```
+
+- &. の正式名称は「safe navigation operator」ですが、&. の形がひとりぼっちで座っている絵の形に似ていることから「ぼっち演算子」と呼ばれることが多くなっています。
+- ぼっち演算子を利用すると、次のように if や、単純な分岐を短く書くことのできる三項演算子（条件演算子）を使って書くよりも簡潔に書くことができます。
+
+```ruby
+# if を使った記述例
+name = if object
+	object.name
+else
+	nil
+end
+```
+
+```ruby
+# 三項演算子を使った記述例
+name = obuject ? object.name : nil
+```
+
+```ruby
+# ぼっち演算子を使った記述例
+name = object&.name
+```
+
+### 1 - 7 - 3 %記法
+
+- 全ての要素が文字列である配列は、通常の配列記法のほかに、「%w」というキーワードを使って書くことができます。
+
+```ruby
+irb(main):001:0> ary1 = ['apple', 'banana', 'orange']
+=> ["apple", "banana", "orange"]
+irb(main):002:0> puts ary1
+apple
+banana                                           
+orange                                           
+=> nil                                           
+irb(main):003:0> ary2 = %w(apple banana orange)
+=> ["apple", "banana", "orange"]
+irb(main):004:0> p ary2
+["apple", "banana", "orange"]
+=> ["apple", "banana", "orange"]
+```
+
+- 全ての要素がシンボルである配列は、「%i」というキーワードを使って書くことができます。
+
+```ruby
+irb(main):005:0> art1 = [:apple, :banana, :orange]
+=> [:apple, :banana, :orange]
+irb(main):006:0> p ary1
+["apple", "banana", "orange"]
+=> ["apple", "banana", "orange"]                                                               
+irb(main):007:0> ary2 = %i(apple banana orange)
+=> [:apple, :banana, :orange]
+irb(main):008:0> p ary2
+[:apple, :banana, :orange]
+=> [:apple, :banana, :orange]
+```
+
+- % を使った特別な記法のことを「%記法」と呼びます。
+- %記法を使うことでソースコードに記述する文字数を少し減らすことができ、可読性が良くなることがあります。%記法で書かれたコードを見かける機会は多いので、ぜひ覚えておきましょう。
+
+### 1 - 7 - 4 配列の各要素から特定の属性だけを取り出す
+
+- Webアプリケーションではユーザーなどのデータの集合から、名前などの特定の属性の集合を得たいという場合があります。例えば、次のようなコードがあるとします。
+
+```ruby
+class User
+  attr_accessor :name
+end
+
+user1 = User.new
+user1.name = '大場寧子'
+user2 = User.new
+user2.name = '小芝美由紀'
+user3 = User.new
+user3.name = '小田井優'
+
+users = [user1, user2, user3]
+```
+
+- このコードを実行すると、users という配列に 3 つの Userオブジェクトが入った状態になります。この user から各ユーザーの名前を取得し、`[”大場寧子”, “小芝美由紀”, “小田井優”]` のように名前だけが入った新しい配列を得たい場合はどのようにすれば良いでしょうか。
+- 答えの 1 つは、1 - 3 - 5 「配列」で紹介した each と << を使う方法です。
+
+```ruby
+names = []
+
+users.each do |user|
+  names << user.name
+end
+
+p names
+=> [”大場寧子”, “小芝美由紀”, “小田井優”]
+```
+
+- この場合もっと良い方法があります。mapメソッドを使う方法です。mapメソッドは、配列の各要素に対してブロック（do 〜 end の中で指定した処理）を実行した結果を格納した新しい配列を返します。mapメソッドを使って先程のコードを書き直すと、次のようになります。
+
+```ruby
+names = users.map do |user|
+	user.name
+end
+=> [”大場寧子”, “小芝美由紀”, “小田井優”]
+```
+
+- ブロックは do 〜 end を使う以外にも、{ } を使っても記述できるので、names の準備をするコードは、次のように 1 行で書くこともできます。
+
+```ruby
+names = users.map { |user| user.name }
+=> [”大場寧子”, “小芝美由紀”, “小田井優”]
+```
+
+- さらに簡潔な書き方があります。アンパサンド（&）とメソッド名のシンボル（:name）を使って、次のように書くこともできます。
+
+```ruby
+names = users.map(&:name)
+=> [”大場寧子”, “小芝美由紀”, “小田井優”]
+```
+
+- mapメソッドと「&:メソッド名」を組み合わせる記法は利用頻度が高いので、スムーズに読み書きができるようになっておきましょう。</details>
