@@ -482,3 +482,115 @@ end
 ```
 
 - このファイルはクラスを定義しているだけで、ほとんど何もコードがありませんが、十分な機能を備えています。Taskの親クラスの親クラスにあたる ActiveRecord::Base （app/models/application_record.rbファイル内にあるコード）が、tasksテーブルの構造に対応した属性の読み書きや、データベース操作などの様々な機能を提供してくれるからです。現時点ではこれで十分なので、何も編集せず、モデルの用意を一旦終わりとしましょう。</details>
+
+
+<details><summary>Chapter 3 - 3 コントローラとビュー</summary>
+
+モデルが作成できたので、続いてコントローラとニューを実装して、ブラウザ上で各操作を行えるようにしていきましょう。モデルと同じように、コントローラやビューの雛形もジェネレータで作成することができます。そのためのコマンドは次のような形になります。
+
+```ruby
+$ bin/rails g controller コントローラ名 [アクション名 アクション名 ...] [オプション]
+```
+
+- 最低限、コントローラを決めればジェネレータを動かすことはできますが、効率的に雛形を作るには、セットで画面の雛形を作れるように、アクションについて先に考えておくとスムーズです。アクションとはリクエストに対しての処理を実行するためのメソッドのことです。具体的にはモデルを呼び出したり、画面を表示したりします。そこで、先ずは必要なアクションについて考えていきましょう。
+- 今回作りたいものは、タスクのCRUD機能です。CRUDはよくある機能のため、アクションに関する設計は完全にパターン化されています。そのパターンに沿ってタスクの CRUD のアクションを設計すると、次のようになります。
+
+| URLの例 ※idの例として「17」を利用 | HTTPメソッド | アクション名 | 機能名 | 役割 |
+| --- | --- | --- | --- | --- |
+| /tasks | GET | index | 一覧表示 | 全タスクを表示する |
+| /tasks/17 | GET | show | 詳細表示 | 特定の id のタスクを表示する |
+| /tasks/new | GET | new | 新規登録画面 | 新規登録画面を表示する |
+| /tasks | POST | create | 登録 | 登録処理を行う |
+| /tasks/17/edit | GET | edit | 編集画面 | 編集画面を表示する |
+| /tasks/17 | PATCH、PUT | update | 更新 | 更新処理を行う |
+| /tasks/17 | DELETE | destroy | 削除 | 削除処理を行う |
+- URL、HTTPメソッド、アクション名と、意識する必要がある項目が多くなってきました。URLはインターネット上の番地、HTTPメソッドはブラウザからアプリケーションにアクセスする際の大まかな要求のようなものです。Webアプリケーションをユーザーが使う画面では、先ず、ユーザーのWebブラウザからアプリケーションに向けて、特定の URL を指定して、特定のHTTPメソッドでHTTPリクエストを送ります。これに対して、アプリケーションは、URLとHTTPメソッドの組み合わせから、リクエストを処理すべきコントローラとアクションを特定して（この特定処理を「ルーティング」と呼びます）、特定したアクションに処理をさせ、結果のHTTPレスポンスを作ってブラウザに返します。
+
+![ルーティング.JPG](https://s3-us-west-2.amazonaws.com/secure.notion-static.com/b29c2c3f-0db0-46d3-b25b-c17c97570e88/%E3%83%AB%E3%83%BC%E3%83%86%E3%82%A3%E3%83%B3%E3%82%AF%E3%82%99.jpg)
+
+- なぜ各機能の URL やHTTPメソッドを前述の図のように設計するのが Rails のパターンなのかというと、RESTfulという考え方に基づいているためです。詳しくは 6 章で説明するのでここでは、以下の 2 つを理解するようにしましょう。
+
+※REST(REpresentational State Transfer)という設計思想に基づいたシステムを RESTful であるといいます。
+
+1. リクエストを処理するコントローラとアクションは、ブラウザからのリクエストに含まれる URL とHTTPメソッドによって決定される。
+2. コントローラのアクションを設計する際には、入り口となる URLとHTTPメソッドを併せて考える必要がある。
+- 前置きが長くなりましたが、開発するアクションの全容をはっきりさせたので、ジェネレータでコードの雛形を作ってみましょう。controllerのジェネレータでアクションを指定すると、アクションと同名のビューも一緒に作ってくれます。ちょっとしたコツとしては、HTTPメソッドが GET のアクションは同盟のビューを使うことが多いという法則があるため、HTTPメソッドが GET となるアクション名をジェネレータコマンドの引数として指定するのが効率的です。
+
+※GETのアクションは、基本的に情報（リソース）の取得へ対応するリクエストなので、アクションの仕事は要求された情報を含む画面を表示することが中心になります。そのため、同名のビューを利用することが多くなります。GETでないアクションは、情報（リソース）の操作を行うリクエストであるため、操作後に情報参照用の画面にリダイレクトすることが多く、その場合はアクションと同名のビューが不要になりやすいという傾向があります。
+
+- そこで、前ページの表を参考に、GETのアクションであるindex、show、new、editの 4 つのアクションを指定してジェネレータコマンドを実行してみましょう。
+
+```ruby
+# GETのアクションである、index、show、new、editの4つのアクションを指定してジェネレータコマンドを実行する。
+$ bin/rails g controller tasks index show new edit
+
+#実際の表示
+bin/rails g controller tasks index show new edit
+Running via Spring preloader in process 40165
+      create  app/controllers/tasks_controller.rb
+       route  get 'tasks/index'
+              get 'tasks/show'
+              get 'tasks/new'
+              get 'tasks/edit'
+      invoke  slim
+      create    app/views/tasks
+      create    app/views/tasks/index.html.slim
+      create    app/views/tasks/show.html.slim
+      create    app/views/tasks/new.html.slim
+      create    app/views/tasks/edit.html.slim
+      invoke  test_unit
+      create    test/controllers/tasks_controller_test.rb
+      invoke  helper
+      create    app/helpers/tasks_helper.rb
+      invoke    test_unit
+      invoke  assets
+      invoke    coffee
+      create      app/assets/javascripts/tasks.coffee
+      invoke    scss
+      create      app/assets/stylesheets/tasks.scss
+```
+
+- これでコントローラとビューの雛形を作成できました。ところで、この方法では、Railsは 4 つのアクションについて個別にルーティングの設定を追加してくれます。しかし、今回は CRUD というよくあるパターンについて、パターン通りのルーティングを一括で設定したいので、config/routes.rbからこれらの 4 つのアクションについての設定を消してください。
+
+```ruby
+# CRUDというよくあるパターンについて、パターン通りのルーティングを一括で設定するため、config/routes.rbから以下の4つのアクションの設定を削除する。
+get 'tasks/index'
+get 'tasks/show'
+get 'tasks/new'
+get 'tasks/edit'
+```
+
+![config:routes.rbから削除する4つのアクション.png](https://s3-us-west-2.amazonaws.com/secure.notion-static.com/dc649598-e332-49ef-9af8-60c4890bb51f/configroutes.rb%E3%81%8B%E3%82%89%E5%89%8A%E9%99%A4%E3%81%99%E3%82%8B4%E3%81%A4%E3%81%AE%E3%82%A2%E3%82%AF%E3%82%B7%E3%83%A7%E3%83%B3.png)
+
+- 代わりに、次の設定を追加します。
+
+```ruby
+resources :tasks
+```
+
+![config:routes.rbへ代わりに追加する設定.png](https://s3-us-west-2.amazonaws.com/secure.notion-static.com/a31e24bf-92e1-4b92-9cd9-6035064d37bb/configroutes.rb%E3%81%B8%E4%BB%A3%E3%82%8F%E3%82%8A%E3%81%AB%E8%BF%BD%E5%8A%A0%E3%81%99%E3%82%8B%E8%A8%AD%E5%AE%9A.png)
+
+- 追加したresourcesメソッドは、前ページの表で示した全てのアクション（index、show、new、create、edit、update、destroy）に関するルーティングを一括で設定してくれます。
+- また、ついでにアプリケーションの玄関口であるルートパス、「/」（ローカルで実行している場合は [http://localhost:3000](http://localhost:3000) に対応します）にアクセスしたときに、Railsのデフォルト画面ではなくタスクの一覧が表示されるようにしましょう。それには、次のように routes.rb に設定を足します。
+
+※Railsではデフォルトで 3000 番の port が指定されますが、「rails s -p 3001」と-pオプションでポート番号と指定することができます。この場合 [http://localhost:3001](http://localhost:3001) でアプリケーションが立ち上がります。
+
+```ruby
+# Railsのデフォルト画面にアクセスしたときに、デフォルトではなく、タスクの一覧が表示されるようにroutes.rbに設定を足す。
+root to: 'tasks#index'
+```
+
+- 結果、routes.rbファイルは次のようになります。
+
+```ruby
+Rails.application.routes.draw do
+  root to: 'tasks#index'
+  resources :tasks
+end
+```
+
+- それでは、一度サーバーを停止して再起動してからブラウザで [http://localhost:3000](http://localhost:3000) にアクセスしてみましょう。すると今までのRailsデフォルト画面と違って、Tasks#indexと表示された画面が現れます。少しだけ、タスク管理アプリケーションっぽくなってきましたね。
+
+![タスクの一覧が表示.png](https://s3-us-west-2.amazonaws.com/secure.notion-static.com/f6e881da-d292-4fa9-89d7-eaa138f5b5bf/%E3%82%BF%E3%82%B9%E3%82%AF%E3%81%AE%E4%B8%80%E8%A6%A7%E3%81%8B%E3%82%99%E8%A1%A8%E7%A4%BA.png)
+
+### 3 - 3 - 1 新規登録機能を実装する
